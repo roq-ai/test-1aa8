@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["clientExtensions", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions      = [pgcrypto]
+}
+
+model api_key {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key_value  String   @db.VarChar(255)
+  user_id    String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+  user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tool       tool[]
+}
+
+model customer_tool_usage {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  tool_id      String    @db.Uuid
+  usage_count  Int?
+  last_used_at DateTime? @db.Timestamp(6)
+  created_at   DateTime  @default(now()) @db.Timestamp(6)
+  updated_at   DateTime  @default(now()) @db.Timestamp(6)
+  tool         tool      @relation(fields: [tool_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user         user      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model invite {
+  id                                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invited_user_id                    String       @db.Uuid
+  inviting_user_id                   String       @db.Uuid
+  organization_id                    String       @db.Uuid
+  created_at                         DateTime     @default(now()) @db.Timestamp(6)
+  updated_at                         DateTime     @default(now()) @db.Timestamp(6)
+  user_invite_invited_user_idTouser  user         @relation("invite_invited_user_idTouser", fields: [invited_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user_invite_inviting_user_idTouser user         @relation("invite_inviting_user_idTouser", fields: [inviting_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization                       organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model organization {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  description String?  @db.VarChar(255)
+  name        String   @db.VarChar(255)
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  updated_at  DateTime @default(now()) @db.Timestamp(6)
+  user_id     String   @db.Uuid
+  tenant_id   String   @db.VarChar(255)
+  invite      invite[]
+  user        user     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model tool {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String                @db.VarChar(255)
+  description         String?               @db.VarChar(255)
+  api_key_id          String                @db.Uuid
+  created_at          DateTime              @default(now()) @db.Timestamp(6)
+  updated_at          DateTime              @default(now()) @db.Timestamp(6)
+  customer_tool_usage customer_tool_usage[]
+  api_key             api_key               @relation(fields: [api_key_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user {
+  id                                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                                String                @unique @db.VarChar(255)
+  firstName                            String?               @db.VarChar(255)
+  lastName                             String?               @db.VarChar(255)
+  roq_user_id                          String                @db.VarChar(255)
+  tenant_id                            String                @db.VarChar(255)
+  created_at                           DateTime              @default(now()) @db.Timestamp(6)
+  updated_at                           DateTime              @default(now()) @db.Timestamp(6)
+  api_key                              api_key[]
+  customer_tool_usage                  customer_tool_usage[]
+  invite_invite_invited_user_idTouser  invite[]              @relation("invite_invited_user_idTouser")
+  invite_invite_inviting_user_idTouser invite[]              @relation("invite_inviting_user_idTouser")
+  organization                         organization[]
+}
